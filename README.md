@@ -11,6 +11,7 @@ Why is this script useful?
   - To generate a friendly HTML report with the hybrid status.
   - To show the result on Grid View, so you can easily search in the result.
 
+
 What does this script do?
   - Checks the join status to the local AD.
   - Checks the connection status to Azure AD.
