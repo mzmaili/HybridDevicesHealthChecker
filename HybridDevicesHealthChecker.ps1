@@ -261,9 +261,6 @@ Function CheckDevice ([String] $DeviceName){
     $DeviceRec = "None"
 
 
-    #Test device connection:
-    if (Test-Connection $DeviceName -count 1 -Quiet){
-
     # Test WINRM with Kerberos:
     if (Test-WSMan -ComputerName $DeviceName -Authentication Kerberos -ErrorAction SilentlyContinue) {
         #WSMan test successded:
@@ -323,7 +320,7 @@ Function CheckDevice ([String] $DeviceName){
 
 
         #Check the device status on AAD:
-        $AADDevice = Get-MsolDevice -DeviceId $DID
+        $AADDevice = Get-MsolDevice -DeviceId $DID -ErrorAction 'silentlycontinue'
         
         #Check if the device exist:
         if ($AADDevice.count -ge 1){
@@ -334,6 +331,28 @@ Function CheckDevice ([String] $DeviceName){
                 $DeviceNotes = "The device is not enabled in your Azure AD tenant."
                 $DeviceRec = "Enable the device on Azure AD tenant. For more information, visit the link: https://docs.microsoft.com/en-us/azure/active-directory/devices/device-management-azure-portal#enable--disable-an-azure-ad-device"
             }
+
+            #Check if the device is registered (not Pending):
+            if (-not $AADDevice.AlternativeSecurityIds){
+                $DeviceStatus = "Not Healthy"
+                $DeviceNotes = "The device has not registered yet, it is still in 'Pending' state."
+                $DeviceRec = "Device registration process will not trigger as the device feels itself as a registered device. To fix this issue, do the following:
+-Clear the device state by running the command 'dsregcmd /leave'.
+-Run 'dsregcmd /join' command to perform hybrid Azure AD join procedure and rerun the script, if the issue still persestant, check the possible courses on the article: http://www.microsoft.com/aadjerrors"
+            }
+
+            #Check if the device in dual state
+            $WPJ = $DSReg | Select-String WorkplaceJoined
+            $WPJ = ($WPJ.tostring() -split ":")[1].trim()
+            if ($WPJ -eq "YES"){
+                $DeviceStatus = "Not Healthy"
+                $DeviceNotes = "The device in dual state."
+                $DeviceRec = "Upgrade your OS to Windows 10 1803 (with KB4489894 applied). In pre-1803 releases, you will need to remove the Azure AD registered state manually before enabling Hybrid Azure AD join by disconnecting the user from Access Work or School Account."
+            }
+
+
+
+
 
                 #get ApproximateLastLogonTimestamp value
                 $global:LastLogonTimestamp = $AADDevice.ApproximateLastLogonTimestamp
@@ -362,22 +381,12 @@ Function CheckDevice ([String] $DeviceName){
 
     }else{
         #WSMAN test failed
-        $DeviceStatus = "Not Healthy"
-        $DeviceNotes ="Windows Remote Management is not configured corretly."
-        $DeviceRec = "Make sure that the remote machine is joined to the local AD and make sure that WSMan configured to accespt the Kerberos authentication for remote execution. For more information, visit the link: https://docs.microsoft.com/en-us/windows/desktop/winrm/installation-and-configuration-for-windows-remote-management"
-    }
-
-
-
-
-
-
-    }else{
-        #The device is not available
-        $DID = ""
-        $DeviceStatus = "Not Healthy"
-        $DeviceNotes = "The device is not reachable."
-        $DeviceRec = "Either the device name is incorrect or the device is not accessible."
+        $DeviceStatus = "Unknown"
+        $DeviceNotes ="Either the device name is incorrect or the device is not accessible."
+        $DeviceRec = "Verivy the following:
+-The entered machine name is correct, and joined to the domain.
+-'WinRM' service is running, you can run it using the command 'Start-Service -Name WinRM'
+-The remote server is accisable on WinRm port number '5985'."
     }
 
 
@@ -399,6 +408,8 @@ Function CheckDevice ([String] $DeviceName){
 
             if ($DeviceStatus -eq "Healthy"){
                 $bgcolor = "#00FF00"
+                }elseif($DeviceStatus -eq "Unknown"){
+                $bgcolor = "#ffff00"
                 }else{
                 $bgcolor = "#FF0000"
             }
@@ -416,6 +427,9 @@ Function CheckDevice ([String] $DeviceName){
 
             if ($DeviceStatus -eq "Healthy"){
                 $global:Hnum+=1
+                $global:allnum+=1
+            }elseif ($DeviceStatus -eq "Unknown"){
+                $global:UKnum+=1
                 $global:allnum+=1
             }else{
                 $global:Uhnum+=1
@@ -436,6 +450,7 @@ Function CheckDevice ([String] $DeviceName){
 
 $global:rep =@()
 $global:Hnum=0
+$global:UKnum=0
 $global:Uhnum=0
 $global:allnum=0
 
@@ -582,6 +597,7 @@ $RepReport += "<h3>Hybrid Devices Health Check Summary</h3>
                       <p>Number of checked devices: $global:allnum</p>
                       <p>Number of Healthly devices: $global:Hnum</p>
                       <p>Number of Unhealthly devices: $global:Uhnum</p>
+                      <p>Number of Unknown health devices: $global:UKnum</p>
                       <p>
                       "
 
@@ -621,4 +637,5 @@ Write-Host "======================================"
 Write-Host "Number of checked devices:" $global:allnum
 Write-Host "Number of Healthly devices:" $global:Hnum
 Write-Host "Number of Unhealthly devices:" $global:Uhnum
+Write-Host "Number of Unknown health devices:" $global:UKnum
 
