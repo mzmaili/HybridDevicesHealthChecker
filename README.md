@@ -28,13 +28,14 @@ HybridDevicesHealthChecker PowerShell script checks the health status of hybrid 
 User experience:
 
 - Checking specific device: 
-(https://github.com/mzmaili/HybridDevicesHealthChecker/blob/master/hybrid.PNG)
+
+![Hybrid](https://github.com/mzmaili/HybridDevicesHealthChecker/blob/master/hybrid.PNG)
 
 - Checking set of devices: 
-![Alt text](https://github.com/mzmaili/DSRegTool/blob/master/Capture.PNG "Devices")
+![Check Devices](https://github.com/mzmaili/HybridDevicesHealthChecker/blob/master/Capture.PNG)
 
 - The output report: 
-![Alt text](https://github.com/mzmaili/DSRegTool/blob/master/HTMLReport.PNG)
+![HTMLReport](https://github.com/mzmaili/HybridDevicesHealthChecker/blob/master/HTMLReport.PNG)
 
 ```azurepowershell
 .SYNOPSIS 
